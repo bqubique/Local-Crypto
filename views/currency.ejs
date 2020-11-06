@@ -1,0 +1,9 @@
+<h1> <%= name %> </h1>
+<h2>Supply: <%= supply %></h2>
+<h2>Max Supply: <%= maxSupply %></h2>
+<h2>Supply: <%= supply %></h2>
+<h2>Rank: <%= rank %></h2>
+
+<form action="/addToFavorites" method="POST">
+    <button name="button" value="<%= name%>" type="submit">Add to Favorites</button>
+</form>
