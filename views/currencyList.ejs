@@ -1,0 +1,5 @@
+<a href="/favorites"><h1>See your favorites </h1></a>
+<a href="/logout"><h1>Log out </h1></a>
+<% currencies.forEach(function(currency){ %>
+    <a href="/currency/<%= currency.id %>/<%= currency.supply %>/<%= currency.priceUsd %>/<%= currency.rank%>/<%=currency.maxSupply%>"><h2><%= currency.id %></h2></a>
+<% }); %>

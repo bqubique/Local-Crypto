@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
@@ -18,7 +19,7 @@ app.use(bodyParser.urlencoded({extended:true}));
 app.set('view engine', 'ejs');
 
 app.use(session({
-    secret: "Whatever guys!!!",
+    secret: process.env.SECRET_HASH_KEY,
     resave: false,
     saveUninitialized: true,
     cookie: {}
@@ -32,7 +33,6 @@ mongoose.connect("mongodb://localhost:27017/cryptoUsersDB", {useUnifiedTopology:
 const userSchema = new mongoose.Schema({
     username: String,
     password: String,
-    email: String,
     favs: [String]
 });
 
@@ -57,7 +57,7 @@ https.get("https://api.coincap.io/v2/assets", (apiResponse) => {
         var w = JSON.parse(data)["data"];
         for(var i=0; i< w.length; i++){
             var currencyObject = {
-                name: w[i]["name"],
+                id: w[i]["id"],
                 priceUsd: w[i]["priceUsd"],
                 supply:  w[i]["supply"],
                 maxSupply:  w[i]["maxSupply"] === null ? "Not available" : w[i]["maxSupply"],
@@ -65,7 +65,6 @@ https.get("https://api.coincap.io/v2/assets", (apiResponse) => {
             };
             currencyDetails.push(currencyObject);
         }
-        console.log(currencyDetails.length);
     });
   }).on("error", (err) => {
     console.log("Error: " + err.message);
@@ -73,10 +72,32 @@ https.get("https://api.coincap.io/v2/assets", (apiResponse) => {
 
 app.get("/", function(req, res){
     if(req.isAuthenticated()){
-        res.render("home", {currencies: currencyDetails});
+        res.render("currencyList", {currencies: currencyDetails});
     }else{
-        res.sendFile(__dirname+"/index.html");  
+        res.render("home");  
     }
+});
+
+app.get("/register", function(req, res){
+    res.render("register");
+});
+
+app.get("/login", function(req, res){
+    res.render("login");
+});
+
+app.get("/home", function(req, res){
+    if(req.isAuthenticated()){
+        res.render("currencyList", {currencies: currencyDetails});
+    }else{
+        res.send("Not logged in");
+    }
+});
+
+app.get("/favorites", function(req, res){
+    User.findById(req.user._id, function(err, foundUser){
+        res.render("profile", {favs: foundUser.favs, email: foundUser.username});
+    });
 });
 
 app.get("/currency/:name/:supply/:usd/:rank/:maxSupply", function(req, res){
@@ -88,12 +109,9 @@ app.get("/currency/:name/:supply/:usd/:rank/:maxSupply", function(req, res){
                         });
 });
 
-app.get("/home", function(req, res){
-    if(req.isAuthenticated()){
-
-    }else{
-        res.send("Not logged in");
-    }
+app.get("/logout", function(req, res){
+    req.logout();
+    res.render("home");
 });
 
 app.post("/register", function(req, res){
@@ -101,24 +119,32 @@ app.post("/register", function(req, res){
     User.register({username: req.body.username}, req.body.password, function(err, user){
         if(err){
             console.log(err);
-            res.redirect("/");
         }else{
             passport.authenticate("local")(req, res, function(){
-                res.redirect("/");
+                res.redirect("/home");
             });
         }
     });
 });
 
-app.get("/favorites", function(req, res){
-    User.findById(req.user._id, function(err, foundUser){
-        res.render("profile", {favs: foundUser.favs, email: foundUser.username});
+app.post("/login", function(req, res){
+    const user = new User({
+        username: req.body.username,
+        password: req.body.password
     });
+
+    req.login(user, function(err){
+        if(err){
+            console.log(err);
+        }else{
+            passport.authenticate("local")(req, res, function(){
+                res.render("currencyList", {currencies: currencyDetails});
+            })
+        }
+    })
 });
 
 app.post("/addToFavorites", function(req, res){
-    console.log(req.body.button);
-    console.log(req.user.id);
     User.findById(req.user.id, function(err, foundUser){
         if(err){
             console.log(err);
